@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Web Viewer</title>
+</head>
+<body>
+    <input type="text" id="urlInput" placeholder="Enter URL here">
+    <button onclick="loadPage()">Load Page</button>
+    <br><br>
+    <iframe id="webFrame" src="" style="width:100%; height:600px; border:none;"></iframe>
+
+    <script>
+        function loadPage() {
+            var url = document.getElementById('urlInput').value;
+            document.getElementById('webFrame').src = url;
+        }
+    </script>
+</body>
+</html>
