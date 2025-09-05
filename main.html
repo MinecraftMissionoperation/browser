@@ -2,30 +2,214 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Simple Web Viewer</title>
+    <title>Simple Web Browser</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #urlInput { width: 60%; padding: 8px; }
-        button { padding: 8px 16px; }
-        #webFrame { margin-top: 16px; }
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            min-height: 100vh;
+            background: linear-gradient(120deg, #4e54c8 0%, #8f94fb 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+        .browser-container {
+            margin: auto;
+            width: 90vw;
+            max-width: 900px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 18px;
+            box-shadow: 0 2px 32px rgba(0,0,0,0.16);
+            padding: 24px 18px 12px 18px;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+        .tabs {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        .tab {
+            background: #eee;
+            border-radius: 8px 8px 0 0;
+            padding: 8px 18px 8px 14px;
+            margin-right: 1px;
+            cursor: pointer;
+            border: 1px solid #bdbdbd;
+            border-bottom: none;
+            position: relative;
+            font-size: 15px;
+            transition: background 0.15s;
+        }
+        .tab.active {
+            background: #4e54c8;
+            color: #fff;
+            border-bottom: 2px solid #fff;
+            font-weight: bold;
+        }
+        .tab .close {
+            position: absolute;
+            right: 6px;
+            top: 4px;
+            font-weight: bold;
+            color: #888;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .add-tab {
+            background: #4e54c8;
+            color: #fff;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            font-size: 20px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 10px;
+        }
+        .search-bar-container {
+            display: flex;
+            justify-content: center;
+            margin: 18px 0 14px 0;
+        }
+        .search-bar {
+            width: 60%;
+            min-width: 150px;
+            max-width: 520px;
+            padding: 10px 16px;
+            border: 1.5px solid #4e54c8;
+            border-radius: 24px 0 0 24px;
+            font-size: 16px;
+            outline: none;
+        }
+        .go-btn {
+            border: none;
+            background: #4e54c8;
+            color: #fff;
+            padding: 10px 22px;
+            border-radius: 0 24px 24px 0;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.15s;
+        }
+        .go-btn:hover { background: #35398a; }
+        .iframe-container {
+            width: 100%;
+            height: 65vh;
+            min-height: 350px;
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 16px #0002;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #fafafa;
+            border-radius: 0 0 12px 12px;
+        }
+        @media (max-width: 640px) {
+            .browser-container { width: 99vw; padding: 8px 2px 6px 2px; }
+            .search-bar { width: 85%; min-width: 80px; }
+            .iframe-container { min-height: 200px; }
+        }
     </style>
 </head>
 <body>
-    <form onsubmit="loadPage(); return false;">
-        <label for="urlInput">URL:</label>
-        <input type="text" id="urlInput" placeholder="Enter URL here (e.g., example.com)">
-        <button type="submit">Load Page</button>
-    </form>
-    <iframe id="webFrame" src="" style="width:100%; height:600px; border:none;"></iframe>
-
+    <div class="browser-container">
+        <div class="tabs" id="tabs"></div>
+        <div class="search-bar-container">
+            <input id="urlInput" class="search-bar" type="text" placeholder="Enter a web address (e.g., example.com)" autocomplete="off">
+            <button class="go-btn" onclick="goToUrl()">Go</button>
+        </div>
+        <div class="iframe-container">
+            <iframe id="browserFrame"></iframe>
+        </div>
+    </div>
     <script>
-        function loadPage() {
-            var url = document.getElementById('urlInput').value.trim();
-            if (!/^https?:\/\//i.test(url)) {
-                url = 'https://' + url;
-            }
-            document.getElementById('webFrame').src = url;
+        // Simple tab system
+        let tabs = [
+            { title: "New Tab", url: "https://example.com" }
+        ];
+        let activeTab = 0;
+
+        function renderTabs() {
+            const tabsDiv = document.getElementById('tabs');
+            tabsDiv.innerHTML = '';
+            tabs.forEach((tab, i) => {
+                const tabDiv = document.createElement('div');
+                tabDiv.className = 'tab' + (i === activeTab ? ' active' : '');
+                tabDiv.textContent = tab.title.length > 18 ? tab.title.slice(0,16) + '…' : tab.title;
+                tabDiv.title = tab.title;
+                tabDiv.onclick = () => switchTab(i);
+                // Close button
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = '×';
+                closeBtn.className = 'close';
+                closeBtn.onclick = (e) => { e.stopPropagation(); closeTab(i); };
+                tabDiv.appendChild(closeBtn);
+                tabsDiv.appendChild(tabDiv);
+            });
+            // Add-tab button
+            const addTabBtn = document.createElement('button');
+            addTabBtn.className = 'add-tab';
+            addTabBtn.textContent = '+';
+            addTabBtn.title = 'New Tab';
+            addTabBtn.onclick = addTab;
+            tabsDiv.appendChild(addTabBtn);
         }
+
+        function switchTab(i) {
+            activeTab = i;
+            document.getElementById('urlInput').value = tabs[i].url || '';
+            document.getElementById('browserFrame').src = tabs[i].url;
+            renderTabs();
+        }
+
+        function addTab() {
+            tabs.push({ title: "New Tab", url: "https://example.com" });
+            activeTab = tabs.length - 1;
+            renderTabs();
+            switchTab(activeTab);
+        }
+
+        function closeTab(i) {
+            if (tabs.length === 1) return; // Never close last tab
+            tabs.splice(i, 1);
+            if (activeTab >= tabs.length) activeTab = tabs.length - 1;
+            renderTabs();
+            switchTab(activeTab);
+        }
+
+        function goToUrl() {
+            let url = document.getElementById('urlInput').value.trim();
+            if (!url) return;
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+            tabs[activeTab].url = url;
+            tabs[activeTab].title = url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+            document.getElementById('browserFrame').src = url;
+            renderTabs();
+        }
+
+        // Enter key support
+        document.getElementById('urlInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') goToUrl();
+        });
+
+        // Initial render
+        renderTabs();
+        switchTab(0);
     </script>
 </body>
 </html>
